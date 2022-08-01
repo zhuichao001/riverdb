@@ -8,6 +8,7 @@
 #include <atomic>
 #include <string>
 #include <memory>
+#include "options.h"
 #include "runtime_info.h"
 
 enum ENTRY_TYPE{
@@ -106,32 +107,41 @@ struct skiplist_t {
         return h;
     }
 
-    int get(const std::string &k, std::string &v) {
-        ebr_guard_t g(RW_TYPE::READ);
+    int get(const ropt_t &opt, const std::string &k, std::string &v) {
+        uint64_t sn = opt.snap==nullptr? incr_global_sn(0) : opt.snap->sn;
+        ebr_guard_t g(sn);
 
         node_t<S,T> *prev = previous(0, k);
-        if(prev==nullptr){
+        if (prev==nullptr) {
             return -1;
         }
 
         node_t<S,T> *cur = prev->forwards[0].load(std::memory_order_acquire);
         data_entry_t<S,T> *dat = cur->data.load(std::memory_order_acquire);
-        if(dat->key==k && dat->kvtype==ENTRY_DATA){
-            v = dat->val;
-            return 0;
+        if (dat!=nullptr && dat->key!=k) {
+            return -1;
+        }
+
+        while (dat!=nullptr) {
+            if (dat->sn > sn) {
+                dat = dat->next;
+                continue;
+            }
+            if (dat->kvtype==ENTRY_DATA) {
+                v = dat->val;
+                return 0;
+            } else if (dat->kvtype==ENTRY_DEL) {
+                return -1;
+            }
         }
         return -1;
     }
 
-    void put(const std::string &key, const std::string &val){
-        ebr_guard_t g(RW_TYPE::WRITE);
-
+    void put(const wopt_t &opt, const std::string &key, const std::string &val){
         insert(ENTRY_DATA, key, val);
     }
 
-    void remove(const std::string &key){
-        ebr_guard_t g(RW_TYPE::WRITE);
-
+    void remove(const wopt_t &opt, const std::string &key){
         insert(ENTRY_DEL, key, "");
     }
 
@@ -163,7 +173,8 @@ private:
     }
 
     void insert(const ENTRY_TYPE type, const std::string &k, const std::string &v){
-        uint64_t sn = get_runtime_info()->get_sn();
+        uint64_t sn = incr_global_sn(1);
+        ebr_guard_t g(sn);
 
         node_t<S,T> *prev = previous(0, k);
         node_t<S,T> *cur = prev->forwards[0].load(std::memory_order_acquire);

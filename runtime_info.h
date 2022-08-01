@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <thread>
+#include <atomic>
 #include <map>
 #include <list>
 #include <unordered_map>
@@ -67,29 +68,12 @@ uint64_t incr_global_sn(int by=0){
     }
 }
 
-void ebr_enter(int by=0){
-    get_runtime_info()->set_sn(incr_global_sn(by));
-}
-
-void ebr_leave(){
-    get_runtime_info()->set_sn(0);
-}
-
-enum class RW_TYPE{
-    READ = 0,
-    WRITE = 1,
-};
-
 class ebr_guard_t{
 public:
-    ebr_guard_t(RW_TYPE rwtype){
-        if (rwtype==RW_TYPE::READ) {
-            ebr_enter(0);
-        } else {
-            ebr_enter(1);
-        }
+    ebr_guard_t(uint64_t sn){
+        get_runtime_info()->set_sn(sn);
     }
     ~ebr_guard_t(){
-        ebr_leave();
+        get_runtime_info()->set_sn(0);
     }
 };

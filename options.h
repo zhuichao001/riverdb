@@ -1,3 +1,4 @@
+#pragma once
 
 #include "snapshot.h"
 
@@ -8,14 +9,13 @@ typedef struct options{
 
 ///for read
 typedef struct roptions{
-    const snapshot *snap;
-    roptions(): snap(nullptr){
+    const snapshot_t *snap;
+    roptions(): 
+        snap(nullptr){
     }
 }ropt_t;
 
 //for write
-struct woptions{
+typedef struct woptions{
     bool flush;
 }wopt_t;
-
-#endif
