@@ -64,15 +64,6 @@ struct node_t {
 
 template<typename S, typename T>
 struct skiplist_t {
-    node_t<S,T> *head;
-    node_t<S,T> *nil;
-
-    const int MAXHEIGHT;
-    const int WIDTH;
-
-    int length;
-    int height;
-
     skiplist_t(int maxh=16, int width=4):
         MAXHEIGHT(maxh),
         WIDTH(width),
@@ -97,15 +88,12 @@ struct skiplist_t {
         delete nil;
     }
 
-    int size(){ return length; }
-
-    int rand_level() {
-        int h = 1;
-        while (h < MAXHEIGHT && rand()%WIDTH == 0) {
-            ++h;
-        }
-        return h;
+    int open(){
+        //load data from disk, recorver by WAL log
+        return 0;
     }
+
+    int size(){ return length; }
 
     int get(const ropt_t &opt, const std::string &k, std::string &v) {
         uint64_t sn = opt.snap==nullptr? incr_global_sn(0) : opt.snap->sn;
@@ -159,6 +147,23 @@ struct skiplist_t {
     }
 
 private:
+    node_t<S,T> *head;
+    node_t<S,T> *nil;
+
+    const int MAXHEIGHT;
+    const int WIDTH;
+
+    int length;
+    int height;
+
+    int rand_level() {
+        int h = 1;
+        while (h < MAXHEIGHT && rand()%WIDTH == 0) {
+            ++h;
+        }
+        return h;
+    }
+
     node_t<S,T> *previous(const int level, const std::string &k){
         assert(level<=this->height-1);
         node_t<S,T> *node = this->head;
@@ -206,5 +211,4 @@ private:
         this->height = std::max(this->height, lev);
         ++this->length;
     }
-
 };
